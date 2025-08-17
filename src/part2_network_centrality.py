@@ -8,49 +8,94 @@ Using the imbd_movies dataset
 - Make sure the code is inline with the standards we're using in this class 
 '''
 
-import numpy as np
 import pandas as pd
 import networkx as nx
 import json
+from datetime import datetime
 
 # Build the graph
-g = nx.Graph()
-
-# Set up your dataframe(s) -> the df that's output to a CSV should include at least the columns 'left_actor_name', '<->', 'right_actor_name'
+G = nx.Graph()
 
 
-with open() as in_file:
-    # Don't forget to comment your code
-    for line in in_file:
-        # Don't forget to include docstrings for all functions
+def build_graph():
+    """Builds the graph for the IMBD data set and exports the network_centrality_{current_datetime}.csv 
+    
+    Parameters:
+    None
+    
+    Returns:
+    - G: the graph built from the imdb ndjson data"""
 
-        # Load the movie from this line
-        this_movie = json.loads(line)
+    edge_rows = []
+    with open('data/imbd_movies.ndjson') as in_file:
+        for line in in_file:
+
+            # Load the movie from this line
+            this_movie = json.loads(line)
+                
+            # Create a node for every actor
+            for actor_id, actor_name in this_movie['actors']:
+                # add the actor to the graph  
+                G.add_node(actor_name)
+  
+            # Iterate through the list of actors, generating all pairs
+            # Starting with the first actor in the list, generate pairs with all subsequent actors
+            # then continue to second actor in the list and repeat
             
-        # Create a node for every actor
-        for actor_id,actor_name in this_movie['actors']:
-        # add the actor to the graph    
-        # Iterate through the list of actors, generating all pairs
-        ## Starting with the first actor in the list, generate pairs with all subsequent actors
-        ## then continue to second actor in the list and repeat
-        
-        i = 0 #counter
-        for left_actor_id,left_actor_name in this_movie['actors']:
-            for right_actor_id,right_actor_name in this_movie['actors'][i+1:]:
+            i = 0 #counter
+            for left_actor_id,left_actor_name in this_movie['actors']:
+                for right_actor_id,right_actor_name in this_movie['actors'][i+1:]:
 
-                # Get the current weight, if it exists
-                
-                
-                # Add an edge for these actors
-                
-                
+                    # Get the current weight, if it exists
+                    if G.has_edge(left_actor_name, right_actor_name):
+                        G[left_actor_name][right_actor_name]["weight"] += 1
+                    else:
+                    # Add an edge for these actors
+                        G.add_edge(left_actor_name, right_actor_name, weight=1)
+                    i += 1
 
+                    edge_rows.append({'left_actor_name': left_actor_name,
+                                    'arrow': "<->",
+                                    'right_actor_name': right_actor_name})
+                    
+    current_datetime = datetime.now()
+    network_centrality = pd.DataFrame(edge_rows)
+    network_centrality.to_csv(f'data/network_centrality_{current_datetime}.csv', index = False)
 
-# Print the info below
-print("Nodes:", len(g.nodes))
+    return G
+
 
 #Print the 10 the most central nodes
+def get_top_10_central_nodes(G):
+    """Gets top 10 most central nodes in a graph and prints the number of nodes
+    
+    Parameters:
+    - G: a graph outputted by the build_graph method
+    
+    Returns:
+    None"""
+
+    print("Nodes:", len(G.nodes))
+    degree_centrality = nx.degree_centrality(G)
+
+    # Sort by value in descending order
+    degree_centrality = dict(sorted(degree_centrality.items(), key=lambda item: item[1], reverse=True))
+    
+    print('The top 10 most central nodes are \n')
+    
+    i = 0
+    for key, value in degree_centrality.items():
+        print(f"{i+1}.) Name: {key}, Degree Centrality: {value}")
+        i += 1
+
+        if i == 10:
+            break
+
 
 
 # Output the final dataframe to a CSV named 'network_centrality_{current_datetime}.csv' to `/data`
 
+
+# if __name__ == "__main__":
+#     G = build_graph()
+#     get_top_10_central_nodes(G)
